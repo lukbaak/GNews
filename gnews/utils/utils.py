@@ -3,8 +3,7 @@ import json
 import logging
 import re
 
-import requests
-from gnews.utils.constants import AVAILABLE_COUNTRIES, AVAILABLE_LANGUAGES, GOOGLE_NEWS_REGEX
+from gnews.utils.constants import AVAILABLE_COUNTRIES, AVAILABLE_LANGUAGES
 
 
 def lang_mapping(lang):
@@ -20,10 +19,10 @@ def process_url(item, exclude_websites, proxies=None):
     if not all([not re.match(website, source) for website in
                 [f'^http(s)?://(www.)?{website.lower()}.*' for website in exclude_websites]]):
         return
-    url = item.get('link')
-    if re.match(GOOGLE_NEWS_REGEX, url):
-        if proxies:
-            url = requests.head(url, proxies=proxies).headers.get('location', url)
-        else:
-            url = requests.head(url).headers.get('location', url)
-    return url
+    # Google News RSS links are always news.google.com wrapper URLs.  We used
+    # to fire a requests.head() here to chase a redirect, but Google stopped
+    # issuing HTTP redirects in response to HEAD requests.  The call always
+    # failed silently and returned the original wrapper URL unchanged, wasting
+    # ~200 ms per article.  Callers that need the real article URL should
+    # decode the wrapper URL themselves (e.g. via googlenewsdecoder).
+    return item.get('link')
